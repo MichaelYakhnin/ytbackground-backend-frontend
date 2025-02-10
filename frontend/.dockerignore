@@ -1,0 +1,15 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# Angular build output
+dist
+out-tsc
+
+# IDE files
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db

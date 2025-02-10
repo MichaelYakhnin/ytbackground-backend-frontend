@@ -1,0 +1,77 @@
+using Microsoft.AspNetCore.Mvc;
+using YoutubeExplode;
+using YoutubeExplode.Videos.Streams;
+using System.Net.Http.Headers;
+using YoutubeExplode.Common;
+
+namespace YTBackgroundBackend.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class YouTubeController : ControllerBase
+    {
+         private readonly YoutubeClient _youtubeClient;
+
+        public YouTubeController()
+        {
+            _youtubeClient = new YoutubeClient();
+        }
+
+        [HttpGet("stream")]
+        public async Task<IActionResult> StreamVideo(string videoId)
+        {
+            try
+            {
+                
+                var streamManifest = await _youtubeClient.Videos.Streams.GetManifestAsync(videoId);
+                // var streamInfo = streamManifest
+                //                     .GetVideoStreams()
+                //                     .Where(s => s.Container == Container.Mp4)
+                //                     .GetWithHighestVideoQuality();
+                var streamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+                
+                if (streamInfo == null)
+                {
+                    return BadRequest("Failed to retrieve video stream info.");
+                }
+
+                var stream = await _youtubeClient.Videos.Streams.GetAsync(streamInfo);
+                var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+
+                return new FileStreamResult(memoryStream, new MediaTypeHeaderValue("video/mp4").MediaType)
+                {
+                    FileDownloadName = $"{videoId}.mp4"
+                };
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchVideos(string query)
+        {
+            try
+            {
+                var searchResults = await _youtubeClient.Search.GetVideosAsync(query);
+                var videos = searchResults.Select(video => new
+                {
+                    video.Id,
+                    video.Title,
+                    video.Author,
+                    video.Duration,
+                    video.Thumbnails
+                });
+
+                return Ok(videos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+    }
+}

@@ -1,0 +1,60 @@
+<div class="container mt-4">
+    <div class="row">   
+      <div class="col-md-6">
+        <input type="text" [(ngModel)]="query" class="form-control" placeholder="Search YouTube Videos">
+        <button (click)="searchVideos()" class="btn btn-primary mt-2">Search</button>
+      </div>
+      <div class="col-md-6">
+        <input type="text" [(ngModel)]="videoId" class="form-control" placeholder="Enter YouTube Video ID">
+        <button (click)="loadVideo()" class="btn btn-primary mt-2">Load Video</button>
+      </div>
+    </div>
+    <div class="row mt-4">
+      <div class="col-md-12">
+        <div *ngIf="loading" class="text-center">
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only"></span>
+          </div>
+        </div>
+        <video *ngIf="videoUrl && !loading" [src]="videoUrl" controls class="w-100"></video>
+      </div>
+    </div>
+    <div class="row mt-4">
+      <div class="col-md-12">
+        <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Video</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let video of searchResults">
+                <td>
+                  <div class="card mb-4">
+                    <div class="row no-gutters">
+                      <div class="col-md-4">
+                        <img [src]="video.thumbnails[0].url" class="card-img" alt="{{ video.title }}">
+                      </div>
+                      <div class="col-md-8">
+                        <div class="card-body">
+                          <h5 class="card-title">{{ video.title }}</h5>
+                          <p class="card-text">{{ video.author.title }}</p>
+                          <p class="card-text">{{ video.duration }}</p>
+                          <button (click)="playVideo(video.id.value)" class="btn btn-primary">Play Video</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+      </div>
+    </div>
+    <div class="row mt-4">
+      <div class="col-md-12">
+        <button (click)="previousPage()" class="btn btn-secondary" [disabled]="page === 1">Previous</button>
+        <button (click)="nextPage()" class="btn btn-secondary" [disabled]="page * pageSize >= totalResults.length">Next</button>
+      </div>
+    </div>
+  </div>
