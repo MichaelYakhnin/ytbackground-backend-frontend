@@ -1,6 +1,5 @@
 # ytbackground-backend-frontend
- 
-# ytbackground-backend-frontend
+
 
 This repository contains the source code for the `ytbackground-backend-frontend` project, which includes both the backend and frontend components. The backend is built using ASP.NET Core, and the frontend is built using Angular.
 
@@ -54,6 +53,7 @@ The backend is built using ASP.NET Core and provides APIs for interacting with Y
 ## Frontend
 
 The frontend is built using Angular and provides a user interface for interacting with YouTube videos.
+Search by text and video id. Play only audio.
 
 ### Technologies
 
