@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using YoutubeExplode;
 using YoutubeExplode.Videos.Streams;
@@ -8,6 +9,7 @@ namespace YTBackgroundBackend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class YouTubeController : ControllerBase
     {
          private readonly YoutubeClient _youtubeClient;

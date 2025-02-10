@@ -7,6 +7,7 @@ import { Observable } from 'rxjs';
 })
 export class YouTubeService {
   private apiUrl = '/api/youtube';
+  private authUrl = '/api/auth';
 
   constructor(private http: HttpClient) {}
 
@@ -16,5 +17,21 @@ export class YouTubeService {
   
   searchVideos(query: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/search?query=${query}`);
+  }
+
+  login(username: string, password: string): Observable<any> {
+    return this.http.post(`${this.authUrl}/login`, { username, password });
+  }
+
+  setToken(token: string): void {
+    localStorage.setItem('token', token);
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+
+  removeToken(): void {
+    localStorage.removeItem('token');
   }
 }
