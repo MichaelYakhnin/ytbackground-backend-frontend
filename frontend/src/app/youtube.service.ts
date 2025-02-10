@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class YouTubeService {
-  private apiUrl = 'http://localhost:5054/api/youtube';
+  private apiUrl = '/api/youtube';
 
   constructor(private http: HttpClient) {}
 
