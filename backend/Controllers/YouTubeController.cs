@@ -63,7 +63,8 @@ namespace YTBackgroundBackend.Controllers
                         Title = item.Snippet.Title,
                         Author = item.Snippet.ChannelTitle,
                         Duration = formattedDuration,
-                        Thumbnails = item.Snippet.Thumbnails
+                        Thumbnails = item.Snippet.Thumbnails,
+                        PublishedAt = item.Snippet.PublishedAtDateTimeOffset ?? DateTimeOffset.MinValue
                     };
                 });
 
