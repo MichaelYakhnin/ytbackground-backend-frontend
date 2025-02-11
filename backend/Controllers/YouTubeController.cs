@@ -1,9 +1,15 @@
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Services;
+using Google.Apis.YouTube.v3;
+using Google.Apis.YouTube.v3.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 using YoutubeExplode;
 using YoutubeExplode.Videos.Streams;
 using System.Net.Http.Headers;
-using YoutubeExplode.Common;
+using System.IO;
+using System.Xml;
 
 namespace YTBackgroundBackend.Controllers
 {
@@ -12,40 +18,56 @@ namespace YTBackgroundBackend.Controllers
     [Authorize]
     public class YouTubeController : ControllerBase
     {
-         private readonly YoutubeClient _youtubeClient;
+        private readonly YouTubeService _youtubeService;
+        private readonly YoutubeClient _youtubeClient;
 
-        public YouTubeController()
+        public YouTubeController(IConfiguration configuration)
         {
+            _youtubeService = new YouTubeService(new BaseClientService.Initializer()
+            {
+                ApiKey = configuration["YouTube:ApiKey"],
+                ApplicationName = this.GetType().ToString()
+            });
+
             _youtubeClient = new YoutubeClient();
         }
 
-        [HttpGet("stream")]
-        public async Task<IActionResult> StreamVideo(string videoId)
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchVideos(string query, int maxResults = 10)
         {
             try
             {
-                
-                var streamManifest = await _youtubeClient.Videos.Streams.GetManifestAsync(videoId);
-                // var streamInfo = streamManifest
-                //                     .GetVideoStreams()
-                //                     .Where(s => s.Container == Container.Mp4)
-                //                     .GetWithHighestVideoQuality();
-                var streamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-                
-                if (streamInfo == null)
-                {
-                    return BadRequest("Failed to retrieve video stream info.");
-                }
+                var searchListRequest = _youtubeService.Search.List("snippet");
+                searchListRequest.Q = query;
+                searchListRequest.MaxResults = maxResults;
 
-                var stream = await _youtubeClient.Videos.Streams.GetAsync(streamInfo);
-                var memoryStream = new MemoryStream();
-                await stream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
+                var searchListResponse = await searchListRequest.ExecuteAsync();
 
-                return new FileStreamResult(memoryStream, new MediaTypeHeaderValue("video/mp4").MediaType)
+                var videoIds = searchListResponse.Items.Select(item => item.Id.VideoId).ToList();
+                var videoDetailsRequest = _youtubeService.Videos.List("contentDetails");
+                videoDetailsRequest.Id = string.Join(",", videoIds);
+
+                var videoDetailsResponse = await videoDetailsRequest.ExecuteAsync();
+
+                var videos = searchListResponse.Items.Select(item =>
                 {
-                    FileDownloadName = $"{videoId}.mp4"
-                };
+                    var videoDetails = videoDetailsResponse.Items.FirstOrDefault(v => v.Id == item.Id.VideoId);
+                    var duration = videoDetails?.ContentDetails?.Duration;
+
+                    // Parse the duration to TimeSpan and format it as "HH:mm:ss"
+                    var formattedDuration = duration != null ? XmlConvert.ToTimeSpan(duration).ToString(@"hh\:mm\:ss") : "00:00:00";
+
+                    return new
+                    {
+                        Id = item.Id.VideoId,
+                        Title = item.Snippet.Title,
+                        Author = item.Snippet.ChannelTitle,
+                        Duration = formattedDuration,
+                        Thumbnails = item.Snippet.Thumbnails
+                    };
+                });
+
+                return Ok(videos);
             }
             catch (Exception ex)
             {
@@ -53,22 +75,28 @@ namespace YTBackgroundBackend.Controllers
             }
         }
 
-        [HttpGet("search")]
-        public async Task<IActionResult> SearchVideos(string query)
+        [HttpGet("stream")]
+        public async Task<IActionResult> StreamAudio(string videoId)
         {
             try
             {
-                var searchResults = await _youtubeClient.Search.GetVideosAsync(query);
-                var videos = searchResults.Select(video => new
+                var streamManifest = await _youtubeClient.Videos.Streams.GetManifestAsync(videoId);
+                var streamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+                
+                if (streamInfo == null)
                 {
-                    video.Id,
-                    video.Title,
-                    video.Author,
-                    video.Duration,
-                    video.Thumbnails
-                });
+                    return BadRequest("Failed to retrieve audio stream info.");
+                }
 
-                return Ok(videos);
+                var stream = await _youtubeClient.Videos.Streams.GetAsync(streamInfo);
+                var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+
+                return new FileStreamResult(memoryStream, new MediaTypeHeaderValue("audio/mp4").MediaType)
+                {
+                    FileDownloadName = $"{videoId}.mp4"
+                };
             }
             catch (Exception ex)
             {

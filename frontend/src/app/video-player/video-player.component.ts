@@ -14,11 +14,13 @@ export class VideoPlayerComponent {
   videoUrl: string | undefined;
   videoId: string = '';
   query: string = '';
+  maxResults: number = 10; // Add maxResults property
   searchResults: any[] = [];
   page: number = 1;
   pageSize: number = 25;
   totalResults: any[] = [];
   loading: boolean = false;
+  maxResultsOptions: number[] = [5, 10, 25, 50, 100]; // Add maxResultsOptions property
 
   constructor(private youtubeService: YouTubeService) {}
 
@@ -37,7 +39,7 @@ export class VideoPlayerComponent {
   searchVideos(): void {
     if (this.query) {
       this.loading = true;
-      this.youtubeService.searchVideos(this.query).subscribe(results => {
+      this.youtubeService.searchVideos(this.query, this.maxResults).subscribe(results => {
         this.searchResults = results.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
         this.totalResults = results;
         this.loading = false;

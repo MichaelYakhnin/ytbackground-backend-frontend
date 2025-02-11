@@ -15,8 +15,8 @@ export class YouTubeService {
     return this.http.get(`${this.apiUrl}/stream?videoId=${videoId}`, { responseType: 'blob' });
   }
   
-  searchVideos(query: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/search?query=${query}`);
+  searchVideos(query: string, maxResults: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/search?query=${query}&maxResults=${maxResults}`);
   }
 
   login(username: string, password: string): Observable<any> {
