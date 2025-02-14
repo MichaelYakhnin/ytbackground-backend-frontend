@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -17,6 +17,12 @@ export class YouTubeService {
   
   searchVideos(query: string, maxResults: number): Observable<any> {
     return this.http.get(`${this.apiUrl}/search?query=${query}&maxResults=${maxResults}`);
+  }
+  
+  getVideosDetails(videoIds: string[]): Observable<any> {
+    const params = new HttpParams()
+      .set('ids', videoIds.join(','));
+    return this.http.get(`${this.apiUrl}/videos`, { params });
   }
 
   login(username: string, password: string): Observable<any> {

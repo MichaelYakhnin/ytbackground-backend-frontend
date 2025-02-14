@@ -1,14 +1,9 @@
-using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
-using Google.Apis.YouTube.v3.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 using YoutubeExplode;
 using YoutubeExplode.Videos.Streams;
-using System.Net.Http.Headers;
-using System.IO;
 using System.Xml;
 
 namespace YTBackgroundBackend.Controllers
@@ -83,7 +78,7 @@ namespace YTBackgroundBackend.Controllers
             {
                 var streamManifest = await _youtubeClient.Videos.Streams.GetManifestAsync(videoId);
                 var streamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-                
+
                 if (streamInfo == null)
                 {
                     return BadRequest("Failed to retrieve audio stream info.");
@@ -94,10 +89,45 @@ namespace YTBackgroundBackend.Controllers
                 await stream.CopyToAsync(memoryStream);
                 memoryStream.Position = 0;
 
-                return new FileStreamResult(memoryStream, new MediaTypeHeaderValue("audio/mp4").MediaType)
+                return new FileStreamResult(memoryStream, "audio/mp4")
                 {
                     FileDownloadName = $"{videoId}.mp4"
                 };
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpGet("videos")]
+        public async Task<IActionResult> GetVideosDetails([FromQuery] string ids)
+        {
+            try
+            {
+                var videoIds = ids.Split(',');
+                var videoDetailsRequest = _youtubeService.Videos.List("snippet,contentDetails");
+                videoDetailsRequest.Id = string.Join(",", videoIds);
+
+                var videoDetailsResponse = await videoDetailsRequest.ExecuteAsync();
+
+                var videos = videoDetailsResponse.Items.Select(video =>
+                {
+                    var duration = video.ContentDetails?.Duration;
+                    var formattedDuration = duration != null ? XmlConvert.ToTimeSpan(duration).ToString(@"hh\:mm\:ss") : "00:00:00";
+
+                    return new
+                    {
+                        Id = video.Id,
+                        Title = video.Snippet.Title,
+                        Author = video.Snippet.ChannelTitle,
+                        Duration = formattedDuration,
+                        Thumbnails = video.Snippet.Thumbnails,
+                        PublishedAt = video.Snippet.PublishedAt
+                    };
+                });
+
+                return Ok(videos);
             }
             catch (Exception ex)
             {

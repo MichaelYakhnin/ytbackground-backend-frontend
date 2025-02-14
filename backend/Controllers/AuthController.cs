@@ -19,7 +19,8 @@ namespace YTBackgroundBackend.Controllers
 
         private static readonly List<UserModel> Users = new List<UserModel>()
         {
-            new UserModel { Username = "admin", Password = "password1" }
+            new UserModel { Username = "admin", Password = "password1" },
+            new UserModel { Username = "shon", Password = "password1" }
         };
 
         // [HttpPost("register")]
