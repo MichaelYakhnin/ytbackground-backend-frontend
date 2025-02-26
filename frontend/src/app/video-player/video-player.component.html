@@ -35,7 +35,8 @@
             <span class="sr-only"></span>
           </div>
         </div>
-        <audio *ngIf="videoUrl && !loading" [src]="videoUrl" controls class="w-100"></audio>
+          <div class="badge">{{ videoTitle }}</div>
+          <audio *ngIf="videoUrl && !loading" [src]="videoUrl" controls class="w-100"></audio>
       </div>
     </div>
   
@@ -55,7 +56,7 @@
                   <p class="card-text">
                     <span class="cyber-time">{{ video.duration }}</span>
                   </p>
-                  <button (click)="playVideo(video.id)" class="btn btn-primary">
+                  <button (click)="playVideo(video.id,video.title)" class="btn btn-primary">
                     <span class="glitch-text">Play Audio</span>
                   </button>
                 </div>

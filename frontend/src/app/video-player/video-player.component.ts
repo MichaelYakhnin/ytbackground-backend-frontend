@@ -14,6 +14,7 @@ import { ActivatedRoute } from '@angular/router';
 export class VideoPlayerComponent implements OnInit{
   videoUrl: string | undefined;
   videoId: string = '';
+  videoTitle: string = '';
   query: string = '';
   maxResults: number = 10; // Add maxResults property
   searchResults: any[] = [];
@@ -79,8 +80,9 @@ export class VideoPlayerComponent implements OnInit{
     }
   }
 
-  playVideo(videoId: string): void {
+  playVideo(videoId: string, videoTitle: string): void {
     this.videoId = videoId;
+    this.videoTitle = videoTitle;
     this.loadVideo();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
