@@ -11,32 +11,25 @@ import { ActivatedRoute } from '@angular/router';
   templateUrl: './video-player.component.html',
   styleUrls: ['./video-player.component.css']
 })
-export class VideoPlayerComponent implements OnInit{
+export class VideoPlayerComponent implements OnInit {
   videoUrl: string | undefined;
   videoId: string = '';
   videoTitle: string = '';
   query: string = '';
-  maxResults: number = 10; // Add maxResults property
+  maxResults: number = 10;
   searchResults: any[] = [];
   page: number = 1;
   pageSize: number = 25;
   totalResults: any[] = [];
   loading: boolean = false;
-  maxResultsOptions: number[] = [5, 10, 25, 50, 100]; // Add maxResultsOptions property
+  maxResultsOptions: number[] = [5, 10, 25, 50, 100];
 
-  constructor(private youtubeService: YouTubeService,
-    private route: ActivatedRoute) {}
-    
-  private saveToHistory(videoId: string): void {
-    const history = JSON.parse(localStorage.getItem('videoHistory') || '[]');
-    if (!history.includes(videoId)) {
-      history.unshift(videoId); // Add to beginning of array
-      localStorage.setItem('videoHistory', JSON.stringify(history));
-    }
-  }
+  constructor(
+    private youtubeService: YouTubeService,
+    private route: ActivatedRoute
+  ) {}
 
   ngOnInit(): void {
-    // Get video ID from URL query parameters
     this.route.queryParams.subscribe(params => {
       if (params['videoId']) {
         this.videoId = params['videoId'];
@@ -51,32 +44,33 @@ export class VideoPlayerComponent implements OnInit{
       this.saveToHistory(this.videoId);
       this.youtubeService.getVideoStream(this.videoId).subscribe({
         next: blob => {
-        this.videoUrl = URL.createObjectURL(blob);
-        this.loading = false;
-      },
-      error: (e) => {
-        console.error(e);
-        this.loading = false;
-    },
-    complete() {
-      console.log("is completed");      
-    }
-    });
+          this.videoUrl = URL.createObjectURL(blob);
+          this.loading = false;
+        },
+        error: (e) => {
+          console.error(e);
+          this.loading = false;
+        },
+        complete: () => {
+          console.log("is completed");
+        }
+      });
     }
   }
-  
+
   searchVideos(): void {
     if (this.query) {
       this.loading = true;
       this.youtubeService.searchVideos(this.query, this.maxResults).subscribe({
-        next:results => {
-        this.searchResults = results.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
-        this.totalResults = results;
-        this.loading = false;
-      }, error: (e) => {
-        this.loading = false;
-      }
-    });
+        next: results => {
+          this.searchResults = results.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
+          this.totalResults = results;
+          this.loading = false;
+        },
+        error: (e) => {
+          this.loading = false;
+        }
+      });
     }
   }
 
@@ -84,22 +78,61 @@ export class VideoPlayerComponent implements OnInit{
     this.videoId = videoId;
     this.videoTitle = videoTitle;
     this.loadVideo();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.scrollToTop();
   }
 
-  nextPage(): void {
-    if (this.page * this.pageSize < this.totalResults.length) {
-      this.page++;
-      this.searchResults = this.totalResults.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  playAndSaveVideo(videoId: string, videoTitle: string): void {
+    this.videoId = videoId;
+    this.videoTitle = videoTitle;
+    this.loading = true;
+    this.saveToHistory(videoId);
+    this.youtubeService.getVideoStream(videoId, true).subscribe({
+      next: blob => {
+        this.videoUrl = URL.createObjectURL(blob);
+        this.loading = false;
+      },
+      error: (e) => {
+        console.error(e);
+        this.loading = false;
+      },
+      complete: () => {
+        console.log("is completed");
+      }
+    });
+    this.scrollToTop();
+  }
+
+  private saveToHistory(videoId: string): void {
+    const history = JSON.parse(localStorage.getItem('videoHistory') || '[]') as string[];
+    const existingIndex = history.indexOf(videoId);
+
+    if (existingIndex !== -1) {
+      history.splice(existingIndex, 1);
     }
+
+    history.unshift(videoId);
+
+    if (history.length > 50) {
+      history.pop();
+    }
+
+    localStorage.setItem('videoHistory', JSON.stringify(history));
   }
 
   previousPage(): void {
     if (this.page > 1) {
       this.page--;
-      this.searchResults = this.totalResults.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      this.searchVideos();
     }
+  }
+
+  nextPage(): void {
+    if (this.page * this.pageSize < this.totalResults.length) {
+      this.page++;
+      this.searchVideos();
+    }
+  }
+  scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }

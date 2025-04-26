@@ -106,3 +106,7 @@
     color: rgba(0, 255, 157, 0.5);
     opacity: 1;
   }
+  .button-group {
+    display: flex;
+    gap: 0.5rem; /* Adjust the gap as needed */
+  }

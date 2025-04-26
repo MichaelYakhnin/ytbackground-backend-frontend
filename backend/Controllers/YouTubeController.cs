@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using YoutubeExplode;
 using YoutubeExplode.Videos.Streams;
 using System.Xml;
+using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace YTBackgroundBackend.Controllers
 {
@@ -14,9 +16,10 @@ namespace YTBackgroundBackend.Controllers
     public class YouTubeController : ControllerBase
     {
         private readonly YouTubeService _youtubeService;
+        private readonly IWebHostEnvironment _environment;
         private readonly YoutubeClient _youtubeClient;
 
-        public YouTubeController(IConfiguration configuration)
+        public YouTubeController(IConfiguration configuration, IWebHostEnvironment environment)
         {
             _youtubeService = new YouTubeService(new BaseClientService.Initializer()
             {
@@ -25,6 +28,7 @@ namespace YTBackgroundBackend.Controllers
             });
 
             _youtubeClient = new YoutubeClient();
+            _environment = environment;
         }
 
         [HttpGet("search")]
@@ -72,7 +76,7 @@ namespace YTBackgroundBackend.Controllers
         }
 
         [HttpGet("stream")]
-        public async Task<IActionResult> StreamAudio(string videoId)
+        public async Task<IActionResult> StreamAudio(string videoId, bool saveToFile = false)
         {
             try
             {
@@ -88,6 +92,23 @@ namespace YTBackgroundBackend.Controllers
                 var memoryStream = new MemoryStream();
                 await stream.CopyToAsync(memoryStream);
                 memoryStream.Position = 0;
+
+                if (saveToFile)
+                {
+                    // Save the audio to disk
+                    var fileName = $"{videoId}.mp4";
+                    var filePath = Path.Combine(_environment.ContentRootPath, "audio", fileName);
+
+                    // Ensure the directory exists
+                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+
+                    using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        memoryStream.WriteTo(fileStream);
+                    }
+
+                    //return Ok($"Audio saved to {filePath}");
+                }
 
                 return new FileStreamResult(memoryStream, "audio/mp4")
                 {
@@ -128,6 +149,56 @@ namespace YTBackgroundBackend.Controllers
                 });
 
                 return Ok(videos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+         [HttpGet("savedFiles")]
+        public IActionResult GetSavedFiles()
+        {
+            try
+            {
+                var audioDirectory = Path.Combine(_environment.ContentRootPath, "audio");
+                if (!Directory.Exists(audioDirectory))
+                {
+                    return Ok(new string[] { });
+                }
+
+                var files = Directory.GetFiles(audioDirectory).Select(Path.GetFileName);
+                return Ok(files);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpGet("playFile")]
+        public async Task<IActionResult> PlayFile(string fileName)
+        {
+            try
+            {
+                var filePath = Path.Combine(_environment.ContentRootPath, "audio", fileName);
+
+                if (!System.IO.File.Exists(filePath))
+                {
+                    return NotFound($"File '{fileName}' not found.");
+                }
+
+                var provider = new FileExtensionContentTypeProvider();
+                if (!provider.TryGetContentType(filePath, out var contentType))
+                {
+                    contentType = "audio/mp4";
+                }
+
+                var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                return new FileStreamResult(fileStream, contentType)
+                {
+                    FileDownloadName = fileName
+                };
             }
             catch (Exception ex)
             {

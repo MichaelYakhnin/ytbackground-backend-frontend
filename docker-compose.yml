@@ -5,6 +5,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    restart: always  
     ports:
       - "4200:80"
     depends_on:
@@ -14,7 +15,13 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: always    
     ports:
       - "5054:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+    volumes:
+      - ./audio-data:/app/audio
+
+volumes:
+  audio-data:  

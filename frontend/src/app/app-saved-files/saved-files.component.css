@@ -1,0 +1,155 @@
+:host {
+    display: block;
+    min-height: 100vh;
+    background: #0a0a0a;
+    color: #00ff9d;
+  }
+  
+.cyber-table {
+    background: #1a1a1a;
+    border: 1px solid #00ff9d;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .table {
+    margin-bottom: 0;
+    color: #00ff9d;
+    background-color: #1a1a1a;
+  }
+  
+  .table tbody td {
+    color: #00ff9d;
+    padding: 1rem;
+    vertical-align: middle;
+    background-color: #1a1a1a;
+  }
+  
+  .table tbody tr {
+    border-bottom: 1px solid rgba(0, 255, 157, 0.2);
+    transition: all 0.3s ease;
+  }
+  
+  .table tbody tr:hover {
+    background: rgba(0, 255, 157, 0.1);
+    box-shadow: 0 0 15px rgba(0, 255, 157, 0.2);
+  }
+  
+  .table thead th {
+    background: #0a0a0a;
+    border-bottom: 2px solid #00ff9d;
+    color: #00ff9d;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 1rem;
+  }
+  
+  /* Add text overflow for long titles */
+  .table td {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .thumbnail {
+    width: 100px;
+    height: 56px;
+    object-fit: cover;
+    margin-right: 1rem;
+    border: 1px solid #00ff9d;
+  }
+  .thumbnail-cell {
+    width: 120px;
+  }
+  
+  .thumbnail-cell img {
+    width: 100px;
+    height: 56px;
+    object-fit: cover;
+    border: 1px solid #00ff9d;
+  }
+  
+  .no-files {
+    color: #00ff9d;
+    font-size: 1.2rem;
+  }
+
+  .btn-primary {
+    background: transparent;
+    border: 2px solid #00ff9d;
+    color: #00ff9d;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-primary:hover {
+    background: #00ff9d;
+    color: #0a0a0a;
+    box-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+  }
+  audio {
+    filter: sepia(100%) saturate(400%) grayscale(0) contrast(200%) hue-rotate(160deg) invert(100%);
+  }
+  @media screen and (max-width: 768px) {
+    .table thead {
+      display: none;
+    }
+  
+    .table, 
+    .table tbody, 
+    .table tr, 
+    .table td {
+      display: block;
+      width: 100%;
+    }
+  
+    .table tr {
+      margin-bottom: 1rem;
+      border: 1px solid #00ff9d;
+      border-radius: 4px;
+      background: #1a1a1a;
+    }
+  
+    .table tbody td {
+      position: relative;
+      padding-left: 25%;
+      text-align: left;
+      max-width: none;
+    }
+  
+    .table td::before {
+      content: attr(data-label);
+      position: absolute;
+      left: 1rem;
+      width: 45%;
+      text-align: left;
+      color: #00ff9d;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+    }
+  
+    .thumbnail-cell {
+      width: 100%;
+      text-align: center;
+      padding: 1rem !important;
+    }
+  
+    .thumbnail-cell img {
+      width: 200px;
+      height: 112px;
+    }
+  
+    .cyber-page-info {
+      display: block;
+      margin: 1rem 0;
+    }
+  
+    .pagination-controls .btn {
+      min-width: 80px;
+      font-size: 0.9rem;
+      padding: 0.5rem;
+    }
+  }
