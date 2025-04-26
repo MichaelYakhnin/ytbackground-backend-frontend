@@ -25,3 +25,7 @@ services:
 
 volumes:
   audio-data:  
+networks:
+  default:
+    name: ytdl_default
+    external: true        

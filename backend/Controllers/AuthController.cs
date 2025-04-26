@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -11,41 +12,79 @@ namespace YTBackgroundBackend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IConfiguration _config;
+        private readonly IMongoCollection<UserModel> _usersCollection;
 
         public AuthController(IConfiguration config)
         {
             _config = config;
+
+            // Connection string and database name
+            var connectionString = _config["MongoDB:ConnectionString"];
+            var databaseName = _config["MongoDB:DatabaseName"];
+
+            // Create a MongoClient and access the database
+            var client = new MongoClient(connectionString);
+            var database = client.GetDatabase(databaseName);
+
+            // Get the users collection
+            _usersCollection = database.GetCollection<UserModel>("users");
         }
 
-        private static readonly List<UserModel> Users = new List<UserModel>()
+        [HttpPost("register")]
+        public IActionResult Register([FromBody] UserModelDTO model, [FromQuery] string ApiKey)
         {
-            new UserModel { Username = "admin", Password = "password1" },
-            new UserModel { Username = "shon", Password = "password1" }
-        };
+            // Validate the model
+            if (string.IsNullOrEmpty(model.Username) || string.IsNullOrEmpty(model.Password))
+            {
+                return BadRequest("Username and password are required.");
+            }
 
-        // [HttpPost("register")]
-        // public IActionResult Register([FromBody] RegisterModel model)
-        // {
-        //     if (Users.Any(u => u.Username == model.Username))
-        //     {
-        //         return BadRequest("Username already exists.");
-        //     }
+            // Check if the token is valid (if provided)
+            if (!string.IsNullOrEmpty(ApiKey))
+            {
+                var jwtKey = _config["Jwt:Key"];
+                if (string.IsNullOrEmpty(jwtKey))
+                {
+                    return Unauthorized("JWT Key is not configured.");
+                }
 
-        //     var user = new UserModel
-        //     {
-        //         Username = model.Username,
-        //         Password = model.Password // In real app, hash the password
-        //     };
+                if (!ApiKey.Equals(jwtKey))
+                {
+                    return Unauthorized("Invalid API Key.");
+                }
+            }
 
-        //     Users.Add(user);
+            // Check if the username already exists
+            var existingUser = _usersCollection.Find(u => u.Username == model.Username).FirstOrDefault();
+            if (existingUser != null)
+            {
+                return BadRequest("Username already exists.");
+            }
 
-        //     return Ok("User registered successfully.");
-        // }
+
+            // Create a new user
+            var newUser = new UserModel
+            {
+                Username = model.Username,
+                Password = model.Password
+            };
+
+            // Insert the new user into the database
+            _usersCollection.InsertOne(newUser);
+
+            // Generate a JWT token for the new user
+            var token = GenerateJwtToken(newUser);
+
+            // Return the token
+            return Ok(new { Token = token });
+        }
+
 
         [HttpPost("login")]
-        public IActionResult Login([FromBody] UserModel model)
+        public IActionResult Login([FromBody] UserModelDTO model)
         {
-            var user = Users.FirstOrDefault(u => u.Username == model.Username && u.Password == model.Password); // In real app, compare hashed password
+            // Retrieve user from MongoDB
+            var user = _usersCollection.Find(u => u.Username == model.Username && u.Password == model.Password).FirstOrDefault();
 
             if (user == null)
             {
@@ -80,5 +119,4 @@ namespace YTBackgroundBackend.Controllers
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
-
 }

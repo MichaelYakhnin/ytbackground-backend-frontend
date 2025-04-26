@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class YouTubeService {
-  baseUrl = 'http://localhost:5054'; // Adjust this to your backend URL
+  baseUrl = '';//'http://localhost:5054'; // Adjust this to your backend URL
   private apiUrl = this.baseUrl + '/api/youtube';
   private authUrl = this.baseUrl + '/api/auth';
 

@@ -7,6 +7,7 @@ using YoutubeExplode.Videos.Streams;
 using System.Xml;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.StaticFiles;
+using System.Security.Claims;
 
 namespace YTBackgroundBackend.Controllers
 {
@@ -95,12 +96,16 @@ namespace YTBackgroundBackend.Controllers
 
                 if (saveToFile)
                 {
+                    // Get the username of the current user
+                    var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                    // Create the directory for the user
+                    var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
+                    Directory.CreateDirectory(userDirectory);
+
                     // Save the audio to disk
                     var fileName = $"{videoId}.mp4";
-                    var filePath = Path.Combine(_environment.ContentRootPath, "audio", fileName);
-
-                    // Ensure the directory exists
-                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                    var filePath = Path.Combine(userDirectory, fileName);
 
                     using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
@@ -156,18 +161,25 @@ namespace YTBackgroundBackend.Controllers
             }
         }
 
-         [HttpGet("savedFiles")]
+        [HttpGet("savedFiles")]
         public IActionResult GetSavedFiles()
         {
             try
             {
-                var audioDirectory = Path.Combine(_environment.ContentRootPath, "audio");
-                if (!Directory.Exists(audioDirectory))
+                // Get the username of the current user
+                var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                // Get the directory for the user
+                var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
+
+                // Check if the directory exists
+                if (!Directory.Exists(userDirectory))
                 {
                     return Ok(new string[] { });
                 }
 
-                var files = Directory.GetFiles(audioDirectory).Select(Path.GetFileName);
+                // Get the files in the directory
+                var files = Directory.GetFiles(userDirectory).Select(Path.GetFileName);
                 return Ok(files);
             }
             catch (Exception ex)
@@ -181,7 +193,14 @@ namespace YTBackgroundBackend.Controllers
         {
             try
             {
-                var filePath = Path.Combine(_environment.ContentRootPath, "audio", fileName);
+                // Get the username of the current user
+                var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                // Get the directory for the user
+                var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
+
+                // Get the file path
+                var filePath = Path.Combine(userDirectory, fileName);
 
                 if (!System.IO.File.Exists(filePath))
                 {
