@@ -12,8 +12,8 @@ export class YouTubeService {
 
   constructor(private http: HttpClient) {}
 
-  getVideoStream(videoId: string, saveToFile: boolean = false): Observable<Blob> {
-    let params = new HttpParams().set('videoId', videoId);
+  getVideoStream(videoId: string, title: string, saveToFile: boolean = false): Observable<Blob> {
+    let params = new HttpParams().set('videoId', videoId).set('title', title);
     if (saveToFile) {
       params = params.set('saveToFile', 'true');
     }

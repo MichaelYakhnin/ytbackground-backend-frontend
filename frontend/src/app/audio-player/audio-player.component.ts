@@ -79,7 +79,7 @@ export class AudioPlayerComponent implements OnInit, OnDestroy {
   }
 
 loadFromServer(isSave: boolean = false): void {
-      this.youtubeService.getVideoStream(this.videoId, isSave).subscribe({
+      this.youtubeService.getVideoStream(this.videoId, this.title,isSave).subscribe({
         next: (blob) => {
           let url = URL.createObjectURL(blob);
           this.audioUrl = this.sanitizer.bypassSecurityTrustUrl(url);

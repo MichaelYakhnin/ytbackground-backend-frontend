@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using YoutubeExplode;
 using YoutubeExplode.Videos.Streams;
 using System.Xml;
-using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.StaticFiles;
 using System.Security.Claims;
 
@@ -77,7 +76,7 @@ namespace YTBackgroundBackend.Controllers
         }
 
         [HttpGet("stream")]
-        public async Task<IActionResult> StreamAudio(string videoId, bool saveToFile = false)
+        public async Task<IActionResult> StreamAudio(string videoId, string title, bool saveToFile = false)
         {
             try
             {
@@ -103,7 +102,7 @@ namespace YTBackgroundBackend.Controllers
                     var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
                     Directory.CreateDirectory(userDirectory);
                     // Save the audio to disk
-                    var fileName = $"{videoId}.mp4";
+                    var fileName = $"{title}.mp4";
                     var filePath = Path.Combine(userDirectory, fileName);
                     Console.WriteLine($"Saving audio to {filePath}");
                     using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -188,7 +187,7 @@ namespace YTBackgroundBackend.Controllers
         }
 
         [HttpGet("playFile")]
-        public async Task<IActionResult> PlayFile(string fileName)
+        public IActionResult PlayFile(string fileName)
         {
             try
             {

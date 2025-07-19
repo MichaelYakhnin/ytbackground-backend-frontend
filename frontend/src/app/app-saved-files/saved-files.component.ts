@@ -17,6 +17,7 @@ export class SavedFilesComponent implements OnInit {
   itemsPerPage: number = 10;
   totalPages: number = 1;
   files: string[] = [];
+  currentPageFiles: string[] = [];
 
   constructor(
     private youtubeService: YouTubeService,
@@ -29,21 +30,31 @@ export class SavedFilesComponent implements OnInit {
 
   loadSavedFiles(): void {
     this.loading = true;
+    this.files = [];
+    this.currentPageFiles = [];
+    
     this.youtubeService.getSavedFiles().subscribe({
       next: (files) => {
         if (files && files.length > 0) {
           this.files = files;
           this.totalPages = Math.ceil(this.files.length / this.itemsPerPage);
+          this.currentPage = 1; // Reset to first page when loading new files
           this.loadCurrentPage();
-          this.loading = false;
         } else {
-          this.loading = false;
           this.totalPages = 1;
+          this.currentPage = 1;
+          this.files = [];
+          this.currentPageFiles = [];
         }
+        this.loading = false;
       },
       error: (error) => {
         console.error('Error loading saved files:', error);
         this.loading = false;
+        this.files = [];
+        this.currentPageFiles = [];
+        this.totalPages = 1;
+        this.currentPage = 1;
       }
     });
   }
@@ -51,7 +62,8 @@ export class SavedFilesComponent implements OnInit {
   loadCurrentPage(): void {
     const start = (this.currentPage - 1) * this.itemsPerPage;
     const end = start + this.itemsPerPage;
-    const currentPageIds = this.files.slice(start, end);
+    this.currentPageFiles = this.files.slice(start, end);
+    this.scrollToTop();
   }
 
   playVideo(videoId: string): void {
@@ -63,6 +75,14 @@ export class SavedFilesComponent implements OnInit {
       this.currentPage--;
       this.loadCurrentPage();
     }
+  }
+
+  get canGoToPreviousPage(): boolean {
+    return this.currentPage > 1;
+  }
+
+  get canGoToNextPage(): boolean {
+    return this.currentPage < this.totalPages;
   }
 
   nextPage(): void {

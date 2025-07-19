@@ -8,11 +8,11 @@
                 </div>
             </div>
 
-            <div *ngIf="!loading && files.length === 0" class="text-center">
+            <div *ngIf="!loading && files.length === 0" class="text-center mt-4">
                 <p class="no-files">No saved audio files found.</p>
             </div>
 
-            <div class="cyber-table" *ngIf="!loading && files.length > 0">
+            <div class="cyber-table" *ngIf="!loading && currentPageFiles.length > 0">
                 <table class="table">
                     <thead>
                         <tr>
@@ -21,11 +21,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr *ngFor="let video of files">
-                            
+                        <tr *ngFor="let video of currentPageFiles">
                             <td data-label="Title">{{ video }}</td>
-                 
-                          
                             <td>
                                 <button (click)="playVideo(video)" class="btn btn-primary">
                                     <span class="glitch-text">Play</span>
