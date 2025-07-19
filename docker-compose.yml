@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     restart: always  
     ports:
-      - "4200:80"
+      - "19000:80"
     depends_on:
       - backend
 
