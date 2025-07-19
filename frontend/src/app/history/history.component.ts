@@ -76,8 +76,8 @@ export class HistoryComponent implements OnInit {
     }
   }
 
-  playVideo(videoId: string): void {
-    this.router.navigate(['/video-player'], { queryParams: { videoId } });
+  playVideo(videoId: string, title: string): void {
+    this.router.navigate(['/audio-player', videoId, title, '0']);
   }
 
   clearHistory(): void {
