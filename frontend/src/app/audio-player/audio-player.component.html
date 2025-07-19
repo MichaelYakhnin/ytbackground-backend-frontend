@@ -1,0 +1,62 @@
+<div class="page-container">
+  <div class="audio-player">
+    <div class="title-bar">
+      <h1 class="title">{{ title }}</h1>
+    </div>
+
+    <div class="disk-container" [class.spinning]="isPlaying">
+      <div class="disk">
+        <div class="disk-inner">
+          <div class="disk-center"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="player-controls">
+      <audio #audioElement
+             [src]="audioUrl"
+             (timeupdate)="onTimeUpdate()"
+             (loadedmetadata)="onLoadedMetadata()">
+      </audio>
+
+      <div class="progress-section">
+        <div class="time-display">
+          <span>{{ formatTime(currentTime) }}</span>
+          <span>{{ formatTime(duration) }}</span>
+        </div>
+        <input type="range"
+               class="progress"
+               [min]="0"
+               [max]="duration"
+               [value]="currentTime"
+               (input)="seek($any($event.target).value)"
+               title="Audio progress"
+               aria-label="Audio progress slider">
+      </div>
+
+      <div class="volume-control">
+        <span class="volume-icon">🔊</span>
+        <input type="range"
+               class="volume"
+               min="0"
+               max="1"
+               step="0.1"
+               [value]="volume"
+               (input)="setVolume($any($event.target).value)"
+               title="Volume control"
+               aria-label="Volume control slider">
+      </div>
+
+      <div class="bottom-controls">
+        <button class="btn btn-primary" (click)="togglePlay()">
+          <span class="glitch-text">{{ isPlaying ? 'Pause' : 'Play' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="loading-overlay" *ngIf="loading">
+      <div class="spinner"></div>
+      <span>Loading audio...</span>
+    </div>
+  </div>
+</div>

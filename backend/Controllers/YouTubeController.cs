@@ -102,11 +102,10 @@ namespace YTBackgroundBackend.Controllers
                     // Create the directory for the user
                     var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
                     Directory.CreateDirectory(userDirectory);
-
                     // Save the audio to disk
                     var fileName = $"{videoId}.mp4";
                     var filePath = Path.Combine(userDirectory, fileName);
-
+                    Console.WriteLine($"Saving audio to {filePath}");
                     using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
                         memoryStream.WriteTo(fileStream);

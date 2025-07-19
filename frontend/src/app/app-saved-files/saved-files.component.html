@@ -8,37 +8,27 @@
                 </div>
             </div>
 
-            <div *ngIf="!loading && savedFiles.length === 0" class="text-center">
+            <div *ngIf="!loading && files.length === 0" class="text-center">
                 <p class="no-files">No saved audio files found.</p>
             </div>
-            <div>
-                <audio controls *ngIf="audioUrl" [src]="audioUrl" class="w-100"></audio>
-            </div>
 
-            <div class="cyber-table" *ngIf="!loading && savedFiles.length > 0">
+            <div class="cyber-table" *ngIf="!loading && files.length > 0">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Thumbnail</th>
                             <th>Title</th>
-                            <th>Author</th>
-                            <th>Duration</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr *ngFor="let video of savedFiles">
-                            <td class="thumbnail-cell">
-                                <img [src]="video.thumbnails.high.url" [alt]="video.title" class="thumbnail">
-                            </td>
-                            <td data-label="Title">{{ video.title }}</td>
-                            <td data-label="Author">{{ video.author }}</td>
-                            <td data-label="Duration">
-                                <span class="cyber-time">{{ video.duration }}</span>
-                            </td>
+                        <tr *ngFor="let video of files">
+                            
+                            <td data-label="Title">{{ video }}</td>
+                 
+                          
                             <td>
-                                <button (click)="playVideo(video.id)" class="btn btn-primary">
-                                    <span class="glitch-text">{{ playingVideoId === video.id ? 'Stop' : 'Play' }}</span>
+                                <button (click)="playVideo(video)" class="btn btn-primary">
+                                    <span class="glitch-text">Play</span>
                                 </button>
                             </td>
                         </tr>

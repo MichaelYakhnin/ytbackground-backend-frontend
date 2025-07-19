@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { YouTubeService } from '../youtube.service';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-video-player',
@@ -13,6 +13,7 @@ import { ActivatedRoute } from '@angular/router';
 })
 export class VideoPlayerComponent implements OnInit {
   videoUrl: string | undefined;
+  showAudioPlayer: boolean = false;
   videoId: string = '';
   videoTitle: string = '';
   query: string = '';
@@ -26,7 +27,8 @@ export class VideoPlayerComponent implements OnInit {
 
   constructor(
     private youtubeService: YouTubeService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -42,19 +44,8 @@ export class VideoPlayerComponent implements OnInit {
     if (this.videoId) {
       this.loading = true;
       this.saveToHistory(this.videoId);
-      this.youtubeService.getVideoStream(this.videoId).subscribe({
-        next: blob => {
-          this.videoUrl = URL.createObjectURL(blob);
-          this.loading = false;
-        },
-        error: (e) => {
-          console.error(e);
-          this.loading = false;
-        },
-        complete: () => {
-          console.log("is completed");
-        }
-      });
+      this.showAudioPlayer = true;
+      this.loading = false;
     }
   }
 
@@ -75,31 +66,13 @@ export class VideoPlayerComponent implements OnInit {
   }
 
   playVideo(videoId: string, videoTitle: string): void {
-    this.videoId = videoId;
-    this.videoTitle = videoTitle;
-    this.loadVideo();
-    this.scrollToTop();
+    this.saveToHistory(videoId);
+    this.router.navigate(['/audio-player', videoId, videoTitle, '0']);
   }
 
   playAndSaveVideo(videoId: string, videoTitle: string): void {
-    this.videoId = videoId;
-    this.videoTitle = videoTitle;
-    this.loading = true;
     this.saveToHistory(videoId);
-    this.youtubeService.getVideoStream(videoId, true).subscribe({
-      next: blob => {
-        this.videoUrl = URL.createObjectURL(blob);
-        this.loading = false;
-      },
-      error: (e) => {
-        console.error(e);
-        this.loading = false;
-      },
-      complete: () => {
-        console.log("is completed");
-      }
-    });
-    this.scrollToTop();
+    this.router.navigate(['/audio-player', videoId, videoTitle, '1']);
   }
 
   private saveToHistory(videoId: string): void {
