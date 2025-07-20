@@ -137,6 +137,11 @@
     box-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
   }
 
+  .button-group {
+    display: flex;
+    gap: 0.5rem; /* Adjust the gap as needed */
+  }
+
 /* Responsive table styles */
 @media screen and (max-width: 768px) {
     .table thead {

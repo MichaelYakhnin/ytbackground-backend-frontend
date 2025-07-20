@@ -79,6 +79,10 @@ export class HistoryComponent implements OnInit {
   playVideo(videoId: string, title: string): void {
     this.router.navigate(['/audio-player', videoId, title, '0']);
   }
+  
+  playAndSaveVideo(videoId: string, videoTitle: string): void {
+    this.router.navigate(['/audio-player', videoId, videoTitle, '1']);
+  }
 
   clearHistory(): void {
     localStorage.removeItem('videoHistory');

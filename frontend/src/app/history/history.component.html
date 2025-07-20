@@ -1,69 +1,68 @@
 <div class="container">
-    <div class="row mb-4">
-      <div class="col-12">
-        <h2 class="cyber-heading">Watch History</h2>
-        <button (click)="clearHistory()" class="btn btn-danger mb-3">
-          <span class="glitch-text">Clear History</span>
-        </button>
-      </div>
+  <div class="row mb-4">
+    <div class="col-12">
+      <h2 class="cyber-heading">Watch History</h2>
+      <button (click)="clearHistory()" class="btn btn-danger mb-3">
+        <span class="glitch-text">Clear History</span>
+      </button>
     </div>
-  
-    <div class="row">
-      <div class="col-12">
-        <div *ngIf="loading" class="text-center">
-          <div class="spinner-border" role="status">
-            <span class="sr-only"></span>
-          </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div *ngIf="loading" class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="sr-only"></span>
         </div>
-  
-        <div class="cyber-table" *ngIf="!loading">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Thumbnail</th>
-                <th>Title</th>
-                <th>Author</th>
-                <th>Duration</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-                <tr *ngFor="let video of historyItems">
-                  <td class="thumbnail-cell">
-                    <img [src]="video.thumbnails.high.url" alt="{{video.title}}">
-                  </td>
-                  <td data-label="Title">{{ video.title }}</td>
-                  <td data-label="Author">{{ video.author }}</td>
-                  <td data-label="Duration">
-                    <span class="cyber-time">{{ video.duration }}</span>
-                  </td>
-                  <td data-label="Action">
-                    <button (click)="playVideo(video.id,video.title)" class="btn btn-primary">
-                      <span class="glitch-text">Play</span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-          </table>
-  
-          <div class="pagination-controls mt-4 mb-2 text-center">
-            <button 
-              (click)="previousPage()" 
-              class="btn btn-primary me-2" 
-              [disabled]="currentPage === 1">
-              Previous
-            </button>
-            <span class="cyber-page-info mx-2">
-              Page {{ currentPage }} of {{ totalPages }}
-            </span>
-            <button 
-              (click)="nextPage()" 
-              class="btn btn-primary ms-2" 
-              [disabled]="currentPage === totalPages">
-              Next
-            </button>
-          </div>
+      </div>
+
+      <div class="cyber-table" *ngIf="!loading">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Thumbnail</th>
+              <th>Title</th>
+              <th>Author</th>
+              <th>Duration</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let video of historyItems">
+              <td class="thumbnail-cell">
+                <img [src]="video.thumbnails.high.url" alt="{{video.title}}">
+              </td>
+              <td data-label="Title">{{ video.title }}</td>
+              <td data-label="Author">{{ video.author }}</td>
+              <td data-label="Duration">
+                <span class="cyber-time">{{ video.duration }}</span>
+              </td>
+              <td data-label="Action">
+                <div class="button-group">
+                  <button (click)="playVideo(video.id,video.title)" class="btn btn-primary">
+                    <span class="glitch-text">Play</span>
+                  </button>
+                  <button (click)="playAndSaveVideo(video.id, video.title)" class="btn btn-primary">
+                    <span class="glitch-text">Play & Save</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="pagination-controls mt-4 mb-2 text-center">
+          <button (click)="previousPage()" class="btn btn-primary me-2" [disabled]="currentPage === 1">
+            Previous
+          </button>
+          <span class="cyber-page-info mx-2">
+            Page {{ currentPage }} of {{ totalPages }}
+          </span>
+          <button (click)="nextPage()" class="btn btn-primary ms-2" [disabled]="currentPage === totalPages">
+            Next
+          </button>
         </div>
       </div>
     </div>
   </div>
+</div>
