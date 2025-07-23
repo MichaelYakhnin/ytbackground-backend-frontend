@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -50,8 +50,13 @@ export class YouTubeService {
     return this.http.get<string[]>(`${this.apiUrl}/savedFiles`);
   }
 
-  playFile(fileName: string): Observable<Blob> {
+  playFile(fileName: string, range?: string): Observable<Blob> {
     const params = new HttpParams().set('fileName', fileName);
-    return this.http.get(`${this.apiUrl}/playFile`, { params, responseType: 'blob' });
+    const headers = range ? { 'Range': range } : undefined;
+    return this.http.get(`${this.apiUrl}/playFile`, {
+      params,
+      responseType: 'blob',
+      headers
+    });
   }
 }

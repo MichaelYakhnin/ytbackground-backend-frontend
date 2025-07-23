@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { YouTubeService } from '../youtube.service';
 import { ActivatedRoute } from '@angular/router';
+import { HttpResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-audio-player',
@@ -43,6 +44,30 @@ export class AudioPlayerComponent implements OnInit, OnDestroy {
     });
   }
 
+  private cleanup(): void {
+    if (this.audioElement?.nativeElement) {
+      const audio = this.audioElement.nativeElement;
+      audio.pause();
+      
+      // Clean up any object URLs we created
+      if (this.audioUrl) {
+        URL.revokeObjectURL(this.audioUrl.toString());
+      }
+      
+      // Reset the audio source
+      audio.src = '';
+      this.audioUrl = null;
+    }
+
+    // Clean up audio context if it exists
+    if (this.audioContext) {
+      this.audioContext.close();
+    }
+    
+    // Save final playback position
+    this.saveToHistory();
+  }
+
   ngOnDestroy(): void {
     this.cleanup();
   }
@@ -64,18 +89,44 @@ export class AudioPlayerComponent implements OnInit, OnDestroy {
   }
 
   loadFromDisk() {
-    this.youtubeService.playFile(this.videoId).subscribe({
-        next: (blob) => {
-          let url = URL.createObjectURL(blob);
+    this.loading = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const loadWithRetry = () => {
+      const audio = this.audioElement?.nativeElement;
+      const currentTime = audio?.currentTime || 0;
+      
+      // Calculate range based on current playback position
+      // Estimate ~128 KB per second of audio (typical MP3 bitrate)
+      const bytesPerSecond = 128 * 1024; // 128 KB/s
+      const rangeStart = currentTime > 0 ? Math.floor(currentTime * bytesPerSecond) : 0;
+      const range = currentTime > 0 ? `bytes=${rangeStart}-` : undefined;
+
+      this.youtubeService.playFile(this.videoId, range).subscribe({
+        next: (blob: Blob) => {
+          const url = URL.createObjectURL(blob);
           this.audioUrl = this.sanitizer.bypassSecurityTrustUrl(url);
           this.loading = false;
-          //this.initializeAudioContext();
+
+          if (currentTime > 0 && audio) {
+            audio.currentTime = currentTime;
+          }
         },
         error: (error) => {
           console.error('Error loading audio:', error);
-          this.loading = false;
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`Retrying... Attempt ${retryCount} of ${maxRetries}`);
+            setTimeout(loadWithRetry, 1000 * retryCount); // Exponential backoff
+          } else {
+            this.loading = false;
+          }
         }
       });
+    };
+
+    loadWithRetry();
   }
 
 loadFromServer(isSave: boolean = false): void {
@@ -94,6 +145,7 @@ loadFromServer(isSave: boolean = false): void {
     }
 
   private initializeAudioContext(): void {
+    // Initialize audio context when user interacts with the player
     if (!this.audioContext) {
       this.audioContext = new AudioContext();
       const audio = this.audioElement.nativeElement;
@@ -136,8 +188,17 @@ loadFromServer(isSave: boolean = false): void {
     
     // Save progress every 5 seconds and when there's actual progress
     if (Math.floor(this.currentTime) % 5 === 0 && this.currentTime > 0) {
-      //console.log('Saving progress at:', this.formatTime(this.currentTime));
-      //this.saveToHistory();
+      this.saveToHistory();
+    }
+
+    // Check if we need to preload the next chunk
+    const buffered = audio.buffered;
+    if (buffered.length > 0) {
+      const timeRemaining = buffered.end(buffered.length - 1) - this.currentTime;
+      if (timeRemaining < 10 && !this.loading) { // Less than 10 seconds remaining
+        console.log('Preloading next chunk...');
+        this.loadFromDisk(); // This will now use range request based on current time
+      }
     }
   }
 
@@ -210,14 +271,4 @@ loadFromServer(isSave: boolean = false): void {
     }
   }
 
-  private cleanup(): void {
-    if (this.audioElement && this.audioElement.nativeElement) {
-      this.audioElement.nativeElement.pause();
-      this.audioElement.nativeElement.src = '';
-    }
-    if (this.audioContext) {
-      this.audioContext.close();
-    }
-    this.saveToHistory();
-  }
 }
