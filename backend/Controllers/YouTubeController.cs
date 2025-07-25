@@ -195,18 +195,18 @@ namespace YTBackgroundBackend.Controllers
             }
 
             // Buffer size configuration based on file size
-            const int SmallFileThreshold = 10 * 1024 * 1024;      // 10 MB
-            const int LargeFileThreshold = 100 * 1024 * 1024;     // 100 MB
+            // const int SmallFileThreshold = 10 * 1024 * 1024;      // 10 MB
+            // const int LargeFileThreshold = 100 * 1024 * 1024;     // 100 MB
             
             // Buffer sizes for different scenarios
             const int SmallFileBufferSize = 32 * 1024;            // 32 KB for small files
-            const int MediumFileBufferSize = 64 * 1024;           // 64 KB for medium files
-            const int LargeFileBufferSize = 128 * 1024;           // 128 KB for large files
+            // const int MediumFileBufferSize = 64 * 1024;           // 64 KB for medium files
+            // const int LargeFileBufferSize = 128 * 1024;           // 128 KB for large files
             
             // Chunk size limits
             const int SmallFileChunkSize = 1 * 1024 * 1024;       // 1 MB for small files
-            const int MediumFileChunkSize = 2 * 1024 * 1024;      // 2 MB for medium files
-            const int LargeFileChunkSize = 4 * 1024 * 1024;       // 4 MB for large files
+            // const int MediumFileChunkSize = 2 * 1024 * 1024;      // 2 MB for medium files
+            // const int LargeFileChunkSize = 4 * 1024 * 1024;       // 4 MB for large files
 
             try
             {
@@ -227,21 +227,21 @@ namespace YTBackgroundBackend.Controllers
 
                 // Determine optimal buffer and chunk sizes based on file size
                 int bufferSize, maxChunkSize;
-                if (fileLength < SmallFileThreshold)
-                {
+                //if (fileLength < SmallFileThreshold)
+                //{
                     bufferSize = SmallFileBufferSize;
                     maxChunkSize = SmallFileChunkSize;
-                }
-                else if (fileLength < LargeFileThreshold)
-                {
-                    bufferSize = MediumFileBufferSize;
-                    maxChunkSize = MediumFileChunkSize;
-                }
-                else
-                {
-                    bufferSize = LargeFileBufferSize;
-                    maxChunkSize = LargeFileChunkSize;
-                }
+                //}
+                //else if (fileLength < LargeFileThreshold)
+                //{
+                //    bufferSize = MediumFileBufferSize;
+                //    maxChunkSize = MediumFileChunkSize;
+                //}
+                //else
+                //{
+                //    bufferSize = LargeFileBufferSize;
+                //    maxChunkSize = LargeFileChunkSize;
+                //}
 
                 // Parse Range header if present
                 var rangeHeader = Request.Headers["Range"].ToString();
