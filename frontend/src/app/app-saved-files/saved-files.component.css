@@ -117,6 +117,7 @@
       padding-left: 25%;
       text-align: left;
       max-width: none;
+      font-size: 1.8rem;
     }
   
     .table td::before {

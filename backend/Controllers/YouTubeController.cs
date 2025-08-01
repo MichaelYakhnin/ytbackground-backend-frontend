@@ -7,6 +7,7 @@ using YoutubeExplode.Videos.Streams;
 using System.Xml;
 using Microsoft.AspNetCore.StaticFiles;
 using System.Security.Claims;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace YTBackgroundBackend.Controllers
 {
@@ -18,8 +19,12 @@ namespace YTBackgroundBackend.Controllers
         private readonly YouTubeService _youtubeService;
         private readonly IWebHostEnvironment _environment;
         private readonly YoutubeClient _youtubeClient;
+        private readonly IDistributedCache _cache;
 
-        public YouTubeController(IConfiguration configuration, IWebHostEnvironment environment)
+        public YouTubeController(
+            IConfiguration configuration,
+            IWebHostEnvironment environment,
+            IDistributedCache cache)
         {
             _youtubeService = new YouTubeService(new BaseClientService.Initializer()
             {
@@ -29,6 +34,7 @@ namespace YTBackgroundBackend.Controllers
 
             _youtubeClient = new YoutubeClient();
             _environment = environment;
+            _cache = cache;
         }
 
         [HttpGet("search")]
@@ -186,27 +192,18 @@ namespace YTBackgroundBackend.Controllers
             }
         }
 
+        // Optimized streaming constants
+        private const int BufferSize = 64 * 1024;            // 64 KB buffer
+        private const int DefaultChunkSize = 2 * 1024 * 1024; // 2 MB default chunk
+        private const int MaxChunkSize = 4 * 1024 * 1024;    // 4 MB max chunk
+        
         [HttpGet("playFile")]
-        public IActionResult PlayFile(string fileName)
+        public async Task<IActionResult> PlayFile(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))
             {
                 return BadRequest("File name cannot be empty.");
             }
-
-            // Buffer size configuration based on file size
-            // const int SmallFileThreshold = 10 * 1024 * 1024;      // 10 MB
-            // const int LargeFileThreshold = 100 * 1024 * 1024;     // 100 MB
-            
-            // Buffer sizes for different scenarios
-            const int SmallFileBufferSize = 32 * 1024;            // 32 KB for small files
-            // const int MediumFileBufferSize = 64 * 1024;           // 64 KB for medium files
-            // const int LargeFileBufferSize = 128 * 1024;           // 128 KB for large files
-            
-            // Chunk size limits
-            const int SmallFileChunkSize = 1 * 1024 * 1024;       // 1 MB for small files
-            // const int MediumFileChunkSize = 2 * 1024 * 1024;      // 2 MB for medium files
-            // const int LargeFileChunkSize = 4 * 1024 * 1024;       // 4 MB for large files
 
             try
             {
@@ -225,128 +222,73 @@ namespace YTBackgroundBackend.Controllers
                 var fileInfo = new FileInfo(filePath);
                 var fileLength = fileInfo.Length;
 
-                // Determine optimal buffer and chunk sizes based on file size
-                int bufferSize, maxChunkSize;
-                //if (fileLength < SmallFileThreshold)
-                //{
-                    bufferSize = SmallFileBufferSize;
-                    maxChunkSize = SmallFileChunkSize;
-                //}
-                //else if (fileLength < LargeFileThreshold)
-                //{
-                //    bufferSize = MediumFileBufferSize;
-                //    maxChunkSize = MediumFileChunkSize;
-                //}
-                //else
-                //{
-                //    bufferSize = LargeFileBufferSize;
-                //    maxChunkSize = LargeFileChunkSize;
-                //}
-
-                // Parse Range header if present
-                var rangeHeader = Request.Headers["Range"].ToString();
-                
-                // Configure FileStream with dynamic buffer size
+                // Configure optimized FileStream options
                 var fileStreamOptions = new FileStreamOptions
                 {
                     Mode = FileMode.Open,
                     Access = FileAccess.Read,
-                    Share = FileShare.Read,
-                    BufferSize = bufferSize,
+                    Share = FileShare.ReadWrite,
+                    BufferSize = BufferSize,
                     Options = FileOptions.Asynchronous | FileOptions.SequentialScan
                 };
 
-                if (string.IsNullOrEmpty(rangeHeader))
-                {
-                    try
-                    {
-                        // No range requested - configure for sequential streaming
-                        Response.Headers.Add("Accept-Ranges", "bytes");
-                        Response.Headers.Add("Content-Length", fileLength.ToString());
-                        
-                        var fullContentStream = new FileStream(filePath, fileStreamOptions);
-                        
-                        return new FileStreamResult(fullContentStream, contentType)
-                        {
-                            FileDownloadName = fileName,
-                            EnableRangeProcessing = true
-                        };
-                    }
-                    catch (IOException ex)
-                    {
-                        return StatusCode(503, $"Unable to access file: {ex.Message}");
-                    }
-                }
+                var rangeHeader = Request.Headers["Range"].ToString();
 
-                // Parse range values
-                var range = rangeHeader.Replace("bytes=", "").Split('-');
-                if (range.Length != 2)
-                {
-                    return BadRequest("Invalid range header format.");
-                }
-                long start, end;
-                try
-                {
-                    start = string.IsNullOrEmpty(range[0]) ? 0 : long.Parse(range[0]);
-                    end = string.IsNullOrEmpty(range[1])
-                        ? Math.Min(start + maxChunkSize - 1, fileLength - 1)
-                        : Math.Min(long.Parse(range[1]), start + maxChunkSize - 1);
-                }
-                catch (FormatException)
-                {
-                    return BadRequest("Invalid range values.");
-                }
-
-                // Validate range
-                if (start < 0 || end < 0)
-                {
-                    return BadRequest("Range values cannot be negative.");
-                }
-
-                if (start >= fileLength || end >= fileLength || start > end)
-                {
-                    Response.Headers.Add("Content-Range", $"bytes */{fileLength}");
-                    return StatusCode(416); // Range Not Satisfiable
-                }
-
-                var contentLength = end - start + 1;
-
-                // Set response headers for partial content
+                // Set common headers
                 Response.Headers.Add("Accept-Ranges", "bytes");
-                Response.Headers.Add("Content-Range", $"bytes {start}-{end}/{fileLength}");
-                Response.Headers.Add("Content-Length", contentLength.ToString());
 
-                // Create file stream with optimized settings
-                try
+                // Handle range request if present
+                if (!string.IsNullOrEmpty(rangeHeader))
                 {
-                    var partialContentStream = new FileStream(filePath, fileStreamOptions);
-                    
-                    try
+                    var range = rangeHeader.Replace("bytes=", "").Split('-');
+                    if (range.Length != 2)
                     {
-                        partialContentStream.Position = start;
-                    }
-                    catch (IOException)
-                    {
-                        partialContentStream.Dispose();
-                        return StatusCode(503, "Unable to seek to requested position.");
+                        return BadRequest("Invalid range header format.");
                     }
 
-                    // Return 206 Partial Content
-                    Response.StatusCode = 206;
-                    return new FileStreamResult(partialContentStream, contentType)
+                    if (!long.TryParse(range[0], out var start))
                     {
-                        FileDownloadName = fileName,
-                        EnableRangeProcessing = true
+                        start = 0;
+                    }
+
+                    var end = string.IsNullOrEmpty(range[1])
+                        ? Math.Min(start + DefaultChunkSize - 1, fileLength - 1)
+                        : Math.Min(long.Parse(range[1]), Math.Min(start + MaxChunkSize - 1, fileLength - 1));
+
+                    if (start < 0 || end >= fileLength || start > end)
+                    {
+                        Response.Headers.Add("Content-Range", $"bytes */{fileLength}");
+                        return StatusCode(416); // Range Not Satisfiable
+                    }
+
+                    Response.Headers.Add("Content-Range", $"bytes {start}-{end}/{fileLength}");
+                    Response.Headers.Add("Content-Length", (end - start + 1).ToString());
+                    Response.StatusCode = 206; // Partial Content
+
+                    var stream = new FileStream(filePath, fileStreamOptions);
+                    stream.Seek(start, SeekOrigin.Begin);
+                    return new FileStreamResult(stream, contentType)
+                    {
+                        EnableRangeProcessing = true,
+                        FileDownloadName = fileName
                     };
                 }
-                catch (IOException ex)
+
+                // No range requested - send full file
+                Response.Headers.Add("Content-Length", fileLength.ToString());
+                return new FileStreamResult(new FileStream(filePath, fileStreamOptions), contentType)
                 {
-                    return StatusCode(503, $"Unable to access file: {ex.Message}");
-                }
+                    EnableRangeProcessing = true,
+                    FileDownloadName = fileName
+                };
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
                 return StatusCode(403, "Access to file is denied.");
+            }
+            catch (IOException ex)
+            {
+                return StatusCode(503, $"Unable to access file: {ex.Message}");
             }
             catch (Exception ex)
             {
