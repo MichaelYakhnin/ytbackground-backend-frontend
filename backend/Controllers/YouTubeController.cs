@@ -193,17 +193,15 @@ namespace YTBackgroundBackend.Controllers
         }
 
         // Optimized streaming constants
-        private const int BufferSize = 64 * 1024;            // 64 KB buffer
-        private const int DefaultChunkSize = 2 * 1024 * 1024; // 2 MB default chunk
-        private const int MaxChunkSize = 4 * 1024 * 1024;    // 4 MB max chunk
-        
+        private const int BufferSize = 16 * 1024;             // 16 KB read buffer
+        private const int DefaultChunkSize = 512 * 1024;      // 512 KB initial chunk
+        private const int MaxChunkSize = 2 * 1024 * 1024;     // 2 MB max chunk for range
+
         [HttpGet("playFile")]
         public async Task<IActionResult> PlayFile(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))
-            {
                 return BadRequest("File name cannot be empty.");
-            }
 
             try
             {
@@ -212,17 +210,15 @@ namespace YTBackgroundBackend.Controllers
                 var filePath = Path.Combine(userDirectory, fileName);
 
                 if (!System.IO.File.Exists(filePath))
-                {
                     return NotFound($"File '{fileName}' not found.");
-                }
 
                 var provider = new FileExtensionContentTypeProvider();
                 var contentType = provider.TryGetContentType(filePath, out var type) ? type : "audio/mp4";
+                if (type == "video/mp4") type = "audio/mp4";
 
                 var fileInfo = new FileInfo(filePath);
                 var fileLength = fileInfo.Length;
 
-                // Configure optimized FileStream options
                 var fileStreamOptions = new FileStreamOptions
                 {
                     Mode = FileMode.Open,
@@ -232,55 +228,47 @@ namespace YTBackgroundBackend.Controllers
                     Options = FileOptions.Asynchronous | FileOptions.SequentialScan
                 };
 
+                Response.Headers["Accept-Ranges"] = "bytes";
                 var rangeHeader = Request.Headers["Range"].ToString();
 
-                // Set common headers
-                Response.Headers.Add("Accept-Ranges", "bytes");
+                if (!string.IsNullOrEmpty(rangeHeader) && rangeHeader.StartsWith("bytes="))
+                {
+                    var range = rangeHeader["bytes=".Length..].Split('-', 2);
+                    if (!long.TryParse(range[0], out var start)) start = 0;
 
-                // Handle range request if present
-                // if (!string.IsNullOrEmpty(rangeHeader))
-                // {
-                    var range = !string.IsNullOrEmpty(rangeHeader) ? rangeHeader.Replace("bytes=", "").Split('-') : null;
-                    // if (range.Length != 2)
-                    // {
-                    //     return BadRequest("Invalid range header format.");
-                    // }
-
-                    if (range == null || !long.TryParse(range[0], out var start))
-                    {
-                        start = 0;
-                    }
-
-                    var end = range == null ||string.IsNullOrEmpty(range[1])
-                        ? Math.Min(start + DefaultChunkSize - 1, fileLength - 1)
-                        : Math.Min(long.Parse(range[1]), Math.Min(start + MaxChunkSize - 1, fileLength - 1));
+                    long end = range.Length > 1 && long.TryParse(range[1], out var parsedEnd)
+                        ? Math.Min(parsedEnd, Math.Min(start + MaxChunkSize - 1, fileLength - 1))
+                        : Math.Min(start + DefaultChunkSize - 1, fileLength - 1);
 
                     if (start < 0 || end >= fileLength || start > end)
                     {
-                        Response.Headers.Add("Content-Range", $"bytes */{fileLength}");
+                        Response.Headers["Content-Range"] = $"bytes */{fileLength}";
                         return StatusCode(416); // Range Not Satisfiable
                     }
 
-                    Response.Headers.Add("Content-Range", $"bytes {start}-{end}/{fileLength}");
-                    Response.Headers.Add("Content-Length", (end - start + 1).ToString());
                     Response.StatusCode = 206; // Partial Content
+                    Response.Headers["Content-Range"] = $"bytes {start}-{end}/{fileLength}";
+                    Response.Headers["Content-Length"] = (end - start + 1).ToString();
 
                     var stream = new FileStream(filePath, fileStreamOptions);
                     stream.Seek(start, SeekOrigin.Begin);
-                    return new FileStreamResult(stream, contentType)
+
+                    return new FileStreamResult(stream, type)
                     {
-                        EnableRangeProcessing = true,
+                        EnableRangeProcessing = false,
                         FileDownloadName = fileName
                     };
-               // }
+                }
 
-                // // No range requested - send full file
-                // Response.Headers.Add("Content-Length", fileLength.ToString());
-                // return new FileStreamResult(new FileStream(filePath, fileStreamOptions), contentType)
-                // {
-                //     EnableRangeProcessing = true,
-                //     FileDownloadName = fileName
-                // };
+                // No range header – send full file
+                Response.Headers["Content-Length"] = fileLength.ToString();
+                var fullStream = new FileStream(filePath, fileStreamOptions);
+
+                return new FileStreamResult(fullStream, type)
+                {
+                    EnableRangeProcessing = true,
+                    FileDownloadName = fileName
+                };
             }
             catch (UnauthorizedAccessException)
             {
