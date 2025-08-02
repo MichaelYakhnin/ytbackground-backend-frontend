@@ -238,20 +238,20 @@ namespace YTBackgroundBackend.Controllers
                 Response.Headers.Add("Accept-Ranges", "bytes");
 
                 // Handle range request if present
-                if (!string.IsNullOrEmpty(rangeHeader))
-                {
-                    var range = rangeHeader.Replace("bytes=", "").Split('-');
-                    if (range.Length != 2)
-                    {
-                        return BadRequest("Invalid range header format.");
-                    }
+                // if (!string.IsNullOrEmpty(rangeHeader))
+                // {
+                    var range = !string.IsNullOrEmpty(rangeHeader) ? rangeHeader.Replace("bytes=", "").Split('-') : null;
+                    // if (range.Length != 2)
+                    // {
+                    //     return BadRequest("Invalid range header format.");
+                    // }
 
-                    if (!long.TryParse(range[0], out var start))
+                    if (range == null || !long.TryParse(range[0], out var start))
                     {
                         start = 0;
                     }
 
-                    var end = string.IsNullOrEmpty(range[1])
+                    var end = range == null ||string.IsNullOrEmpty(range[1])
                         ? Math.Min(start + DefaultChunkSize - 1, fileLength - 1)
                         : Math.Min(long.Parse(range[1]), Math.Min(start + MaxChunkSize - 1, fileLength - 1));
 
@@ -272,15 +272,15 @@ namespace YTBackgroundBackend.Controllers
                         EnableRangeProcessing = true,
                         FileDownloadName = fileName
                     };
-                }
+               // }
 
-                // No range requested - send full file
-                Response.Headers.Add("Content-Length", fileLength.ToString());
-                return new FileStreamResult(new FileStream(filePath, fileStreamOptions), contentType)
-                {
-                    EnableRangeProcessing = true,
-                    FileDownloadName = fileName
-                };
+                // // No range requested - send full file
+                // Response.Headers.Add("Content-Length", fileLength.ToString());
+                // return new FileStreamResult(new FileStream(filePath, fileStreamOptions), contentType)
+                // {
+                //     EnableRangeProcessing = true,
+                //     FileDownloadName = fileName
+                // };
             }
             catch (UnauthorizedAccessException)
             {
