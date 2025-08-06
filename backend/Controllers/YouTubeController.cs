@@ -228,7 +228,8 @@ namespace YTBackgroundBackend.Controllers
                     Options = FileOptions.Asynchronous | FileOptions.SequentialScan
                 };
 
-                Response.Headers["Accept-Ranges"] = "bytes";
+                
+                Response.Headers["Content-Type"] = type;
                 var rangeHeader = Request.Headers["Range"].ToString();
 
                 if (!string.IsNullOrEmpty(rangeHeader) && rangeHeader.StartsWith("bytes="))
@@ -245,7 +246,7 @@ namespace YTBackgroundBackend.Controllers
                         Response.Headers["Content-Range"] = $"bytes */{fileLength}";
                         return StatusCode(416); // Range Not Satisfiable
                     }
-
+                    Response.Headers["Accept-Ranges"] = "bytes";
                     Response.StatusCode = 206; // Partial Content
                     Response.Headers["Content-Range"] = $"bytes {start}-{end}/{fileLength}";
                     Response.Headers["Content-Length"] = (end - start + 1).ToString();
