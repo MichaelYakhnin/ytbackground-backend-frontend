@@ -192,97 +192,39 @@ namespace YTBackgroundBackend.Controllers
             }
         }
 
-        // Optimized streaming constants
-        private const int BufferSize = 16 * 1024;             // 16 KB read buffer
-        private const int DefaultChunkSize = 512 * 1024;      // 512 KB initial chunk
-        private const int MaxChunkSize = 2 * 1024 * 1024;     // 2 MB max chunk for range
-
         [HttpGet("playFile")]
-        public async Task<IActionResult> PlayFile(string fileName)
+        public IActionResult PlayFile(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 return BadRequest("File name cannot be empty.");
 
-            try
+            var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
+            var filePath = Path.Combine(userDirectory, fileName);
+
+            if (!System.IO.File.Exists(filePath))
+                return NotFound($"File '{fileName}' not found.");
+
+            var provider = new FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(filePath, out var contentType))
+                contentType = "application/octet-stream";
+
+            if (Path.GetExtension(filePath).Equals(".m4a", StringComparison.OrdinalIgnoreCase))
+                contentType = "audio/mp4";
+
+            var fileStream = new FileStream(filePath, new FileStreamOptions
             {
-                var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
-                var filePath = Path.Combine(userDirectory, fileName);
+                Mode = FileMode.Open,
+                Access = FileAccess.Read,
+                Share = FileShare.ReadWrite,
+                BufferSize = 64 * 1024, // 64 KB buffer
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan
+            });
 
-                if (!System.IO.File.Exists(filePath))
-                    return NotFound($"File '{fileName}' not found.");
-
-                var provider = new FileExtensionContentTypeProvider();
-                var contentType = provider.TryGetContentType(filePath, out var type) ? type : "audio/mp4";
-                if (type == "video/mp4") type = "audio/mp4";
-
-                var fileInfo = new FileInfo(filePath);
-                var fileLength = fileInfo.Length;
-
-                var fileStreamOptions = new FileStreamOptions
-                {
-                    Mode = FileMode.Open,
-                    Access = FileAccess.Read,
-                    Share = FileShare.ReadWrite,
-                    BufferSize = BufferSize,
-                    Options = FileOptions.Asynchronous | FileOptions.SequentialScan
-                };
-
-                
-                Response.Headers["Content-Type"] = type;
-                var rangeHeader = Request.Headers["Range"].ToString();
-
-                if (!string.IsNullOrEmpty(rangeHeader) && rangeHeader.StartsWith("bytes="))
-                {
-                    var range = rangeHeader["bytes=".Length..].Split('-', 2);
-                    if (!long.TryParse(range[0], out var start)) start = 0;
-
-                    long end = range.Length > 1 && long.TryParse(range[1], out var parsedEnd)
-                        ? Math.Min(parsedEnd, Math.Min(start + MaxChunkSize - 1, fileLength - 1))
-                        : Math.Min(start + DefaultChunkSize - 1, fileLength - 1);
-
-                    if (start < 0 || end >= fileLength || start > end)
-                    {
-                        Response.Headers["Content-Range"] = $"bytes */{fileLength}";
-                        return StatusCode(416); // Range Not Satisfiable
-                    }
-                    Response.Headers["Accept-Ranges"] = "bytes";
-                    Response.StatusCode = 206; // Partial Content
-                    Response.Headers["Content-Range"] = $"bytes {start}-{end}/{fileLength}";
-                    Response.Headers["Content-Length"] = (end - start + 1).ToString();
-
-                    var stream = new FileStream(filePath, fileStreamOptions);
-                    stream.Seek(start, SeekOrigin.Begin);
-
-                    return new FileStreamResult(stream, type)
-                    {
-                        EnableRangeProcessing = false,
-                        FileDownloadName = fileName
-                    };
-                }
-
-                // No range header – send full file
-                Response.Headers["Content-Length"] = fileLength.ToString();
-                var fullStream = new FileStream(filePath, fileStreamOptions);
-
-                return new FileStreamResult(fullStream, type)
-                {
-                    EnableRangeProcessing = true,
-                    FileDownloadName = fileName
-                };
-            }
-            catch (UnauthorizedAccessException)
+            return new FileStreamResult(fileStream, contentType)
             {
-                return StatusCode(403, "Access to file is denied.");
-            }
-            catch (IOException ex)
-            {
-                return StatusCode(503, $"Unable to access file: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+                EnableRangeProcessing = true
+            };
         }
     }
 }

@@ -130,27 +130,32 @@ export class AudioPlayerComponent implements OnInit, OnDestroy {
       const rangeStart = currentTime > 0 ? Math.floor(currentTime * bytesPerSecond) : 0;
       const range = currentTime > 0 ? `bytes=${rangeStart}-` : undefined;
 
-      this.youtubeService.playFile(this.videoId, range).subscribe({
-        next: (blob: Blob) => {
-          const url = URL.createObjectURL(blob);
-          this.audioUrl = this.sanitizer.bypassSecurityTrustUrl(url);
-          this.loading = false;
+      const token = localStorage.getItem('token');
+      const url = `/api/youtube/playFile?fileName=${encodeURIComponent(this.videoId)}&access_token=${token}`;
+      this.audioUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+      this.loading = false;
 
-          if (currentTime > 0 && this.api) {
-            this.api.seekTime(currentTime);
-          }
-        },
-        error: (error) => {
-          console.error('Error loading audio:', error);
-          if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(`Retrying... Attempt ${retryCount} of ${maxRetries}`);
-            setTimeout(loadWithRetry, 1000 * retryCount);
-          } else {
-            this.loading = false;
-          }
-        }
-      });
+      // this.youtubeService.playFile(this.videoId, range).subscribe({
+      //   next: (blob: Blob) => {
+      //     const url = URL.createObjectURL(blob);
+      //     this.audioUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+      //     this.loading = false;
+
+      //     if (currentTime > 0 && this.api) {
+      //       this.api.seekTime(currentTime);
+      //     }
+      //   },
+      //   error: (error) => {
+      //     console.error('Error loading audio:', error);
+      //     if (retryCount < maxRetries) {
+      //       retryCount++;
+      //       console.log(`Retrying... Attempt ${retryCount} of ${maxRetries}`);
+      //       setTimeout(loadWithRetry, 1000 * retryCount);
+      //     } else {
+      //       this.loading = false;
+      //     }
+      //   }
+      // });
     };
 
     loadWithRetry();
