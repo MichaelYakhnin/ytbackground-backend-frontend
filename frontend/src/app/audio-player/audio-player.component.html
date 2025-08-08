@@ -12,13 +12,16 @@
       </div>
     </div>
 
-    <div class="player-controls">
-      <audio #audioElement
+    <vg-player class="player-container" (onPlayerReady)="onPlayerReady($event)">
+      <audio #media
+             [vgMedia]="$any(media)"
              [src]="audioUrl"
-             (timeupdate)="onTimeUpdate()"
-             (loadedmetadata)="onLoadedMetadata()">
+             preload="auto"
+             crossorigin>
       </audio>
+    </vg-player>
 
+    <div class="player-controls">
       <div class="progress-section">
         <div class="time-display">
           <span>{{ formatTime(currentTime) }}</span>
@@ -34,17 +37,19 @@
                aria-label="Audio progress slider">
       </div>
 
-      <div class="volume-control">
-        <span class="volume-icon">🔊</span>
-        <input type="range"
-               class="volume"
-               min="0"
-               max="1"
-               step="0.1"
-               [value]="volume"
-               (input)="setVolume($any($event.target).value)"
-               title="Volume control"
-               aria-label="Volume control slider">
+      <div class="volume-section">
+        <div class="volume-control">
+          <span class="volume-icon">🔊</span>
+          <input type="range"
+                 class="volume"
+                 min="0"
+                 max="1"
+                 step="0.1"
+                 [value]="volume"
+                 (input)="setVolume($any($event.target).value)"
+                 title="Volume control"
+                 aria-label="Volume control slider">
+        </div>
       </div>
 
       <div class="bottom-controls">

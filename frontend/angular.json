@@ -30,7 +30,8 @@
             ],
             "styles": [
               "src/styles.css",
-              "node_modules/bootstrap/dist/css/bootstrap.min.css"
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "node_modules/@videogular/ngx-videogular/fonts/videogular.css"     
             ],
             "scripts": []
           },
@@ -90,7 +91,13 @@
               }
             ],
             "styles": [
-              "src/styles.css"
+              "src/styles.css",
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "node_modules/@videogular/ngx-videogular/fonts/videogular.css",
+              "node_modules/@videogular/ngx-videogular/core/styles/videogular.css",
+              "node_modules/@videogular/ngx-videogular/controls/styles/controls.css",
+              "node_modules/@videogular/ngx-videogular/overlay-play/styles/overlay-play.css",
+              "node_modules/@videogular/ngx-videogular/buffering/styles/buffering.css"
             ],
             "scripts": []
           }
