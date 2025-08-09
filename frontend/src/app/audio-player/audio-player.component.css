@@ -175,7 +175,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .bottom-controls {
-  margin-top: auto;
+  margin-top: 2rem;
   display: flex;
   justify-content: center;
   padding: 1rem 0;
