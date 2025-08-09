@@ -51,6 +51,7 @@ export class AudioPlayerComponent implements OnInit, OnDestroy {
 
     this.api.getDefaultMedia().subscriptions.loadedMetadata.subscribe(
       () => {
+        this.loading = false;
         this.duration = this.api.getDefaultMedia().duration;
         // Restore playback position from history if available
         const savedTime = this.loadFromHistory();
@@ -133,46 +134,16 @@ export class AudioPlayerComponent implements OnInit, OnDestroy {
       const token = localStorage.getItem('token');
       const url = `/api/youtube/playFile?fileName=${encodeURIComponent(this.videoId)}&access_token=${token}`;
       this.audioUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-      this.loading = false;
-
-      // this.youtubeService.playFile(this.videoId, range).subscribe({
-      //   next: (blob: Blob) => {
-      //     const url = URL.createObjectURL(blob);
-      //     this.audioUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-      //     this.loading = false;
-
-      //     if (currentTime > 0 && this.api) {
-      //       this.api.seekTime(currentTime);
-      //     }
-      //   },
-      //   error: (error) => {
-      //     console.error('Error loading audio:', error);
-      //     if (retryCount < maxRetries) {
-      //       retryCount++;
-      //       console.log(`Retrying... Attempt ${retryCount} of ${maxRetries}`);
-      //       setTimeout(loadWithRetry, 1000 * retryCount);
-      //     } else {
-      //       this.loading = false;
-      //     }
-      //   }
-      // });
+      
     };
 
     loadWithRetry();
   }
 
   loadFromServer(isSave: boolean = false): void {
-    this.youtubeService.getVideoStream(this.videoId, this.title, isSave).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        this.audioUrl = this.sanitizer.bypassSecurityTrustUrl(url);
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Error loading audio:', error);
-        this.loading = false;
-      }
-    });
+      const token = localStorage.getItem('token');
+      const url = `/api/youtube//stream?videoId=${encodeURIComponent(this.videoId)}&title=${this.title}&saveToFile=${isSave}&access_token=${token}`;
+      this.audioUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
   togglePlay(): void {

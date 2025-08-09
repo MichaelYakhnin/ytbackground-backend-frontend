@@ -111,7 +111,8 @@ namespace YTBackgroundBackend.Controllers
                     var fileName = $"{title}.mp4";
                     var filePath = Path.Combine(userDirectory, fileName);
                     Console.WriteLine($"Saving audio to {filePath}");
-                    using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, // 64 KB buffer
+                     FileOptions.Asynchronous | FileOptions.SequentialScan))
                     {
                         memoryStream.WriteTo(fileStream);
                     }
@@ -121,6 +122,7 @@ namespace YTBackgroundBackend.Controllers
 
                 return new FileStreamResult(memoryStream, "audio/mp4")
                 {
+                    EnableRangeProcessing = true,
                     FileDownloadName = $"{videoId}.mp4"
                 };
             }
