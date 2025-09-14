@@ -43,9 +43,17 @@ export class VideoPlayerComponent implements OnInit {
   loadVideo(): void {
     if (this.videoId) {
       this.loading = true;
-      this.saveToHistory(this.videoId);
-      this.showAudioPlayer = true;
-      this.loading = false;
+      this.youtubeService.getVideosDetails([this.videoId]).subscribe({
+        next: videos => {
+          this.searchResults = videos;
+          this.totalResults = videos;
+          this.loading = false;
+        },
+        error: (e) => {
+          console.error('Error fetching video details', e);
+          this.loading = false;
+        }
+      });
     }
   }
 
@@ -59,6 +67,7 @@ export class VideoPlayerComponent implements OnInit {
           this.loading = false;
         },
         error: (e) => {
+          console.error('Error fetching video details', e);
           this.loading = false;
         }
       });
