@@ -2,12 +2,14 @@ using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.Xml;
+using YoutubeDLSharp;
+using YoutubeDLSharp.Options;
 using YoutubeExplode;
 using YoutubeExplode.Videos.Streams;
-using System.Xml;
-using Microsoft.AspNetCore.StaticFiles;
-using System.Security.Claims;
-using Microsoft.Extensions.Caching.Distributed;
 
 namespace YTBackgroundBackend.Controllers
 {
@@ -19,22 +21,31 @@ namespace YTBackgroundBackend.Controllers
         private readonly YouTubeService _youtubeService;
         private readonly IWebHostEnvironment _environment;
         private readonly YoutubeClient _youtubeClient;
-        private readonly IDistributedCache _cache;
+        private readonly YoutubeDL _ytDlp;
+        private readonly ILogger<YouTubeController> _logger;
+        private readonly IConfiguration _configuration;
 
         public YouTubeController(
             IConfiguration configuration,
             IWebHostEnvironment environment,
-            IDistributedCache cache)
+            ILogger<YouTubeController> logger)
         {
+            _configuration = configuration;
+            _logger = logger;
+            _environment = environment;
+
             _youtubeService = new YouTubeService(new BaseClientService.Initializer()
             {
-                ApiKey = configuration["YouTube:ApiKey"],
-                ApplicationName = this.GetType().ToString()
+                ApiKey = _configuration["YouTube:ApiKey"],
+                ApplicationName = GetType().ToString()
             });
 
             _youtubeClient = new YoutubeClient();
-            _environment = environment;
-            _cache = cache;
+            _ytDlp = new YoutubeDL();
+
+            var youtubeDlPath = ResolveYoutubeDlPath();
+            _ytDlp.YoutubeDLPath = youtubeDlPath;
+            _logger.LogInformation("Using yt-dlp binary at {YoutubeDlPath}", youtubeDlPath);
         }
 
         [HttpGet("search")]
@@ -77,6 +88,7 @@ namespace YTBackgroundBackend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error occurred while searching videos.");
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -86,48 +98,75 @@ namespace YTBackgroundBackend.Controllers
         {
             try
             {
-                var streamManifest = await _youtubeClient.Videos.Streams.GetManifestAsync(videoId);
-                var streamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-
-                if (streamInfo == null)
-                {
-                    return BadRequest("Failed to retrieve audio stream info.");
-                }
-
-                var stream = await _youtubeClient.Videos.Streams.GetAsync(streamInfo);
-                var memoryStream = new MemoryStream();
-                await stream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-
                 if (saveToFile)
                 {
-                    // Get the username of the current user
                     var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
                     // Create the directory for the user
                     var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
                     Directory.CreateDirectory(userDirectory);
-                    // Save the audio to disk
-                    var fileName = $"{title}.mp4";
-                    var filePath = Path.Combine(userDirectory, fileName);
-                    Console.WriteLine($"Saving audio to {filePath}");
-                    using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, // 64 KB buffer
-                     FileOptions.Asynchronous | FileOptions.SequentialScan))
+                    _ytDlp.OutputFolder = userDirectory;
+                    // a progress handler with a callback that updates a progress bar
+                    var progress = new Progress<DownloadProgress>(p =>_logger.LogInformation("Downloading: {p.Progress}", p.Progress));
+
+                    var res = await _ytDlp.RunAudioDownload($"https://www.youtube.com/watch?v={videoId}",
+                         progress: progress, overrideOptions: new OptionSet()
+                         {
+                             Format = "bestaudio/best",  // <-- only best single audio
+                             ExtractAudio = true,        // extracts audio
+                             AudioFormat = AudioConversionFormat.Mp3,  // or "best"
+                             AudioQuality = 0            // best quality
+                         }
+                    );
+
+                    return ServeFile($"{res.Data}");
+                }
+                else
+                {
+
+                    var streamManifest = await _youtubeClient.Videos.Streams.GetManifestAsync(videoId);
+                    var streamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+
+                    if (streamInfo == null)
                     {
-                        memoryStream.WriteTo(fileStream);
+                        return BadRequest("Failed to retrieve audio stream info.");
                     }
 
-                    //return Ok($"Audio saved to {filePath}");
-                }
+                    var stream = await _youtubeClient.Videos.Streams.GetAsync(streamInfo);
+                    var memoryStream = new MemoryStream();
+                    await stream.CopyToAsync(memoryStream);
+                    memoryStream.Position = 0;
 
-                return new FileStreamResult(memoryStream, "audio/mp4")
-                {
-                    EnableRangeProcessing = true,
-                    FileDownloadName = $"{videoId}.mp4"
-                };
+                    if (saveToFile)
+                    {
+                        // Get the username of the current user
+                        var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                        // Create the directory for the user
+                        var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
+                        Directory.CreateDirectory(userDirectory);
+                        // Save the audio to disk
+                        var fileName = $"{title}.mp4";
+                        var filePath = Path.Combine(userDirectory, fileName);
+                        _logger.LogInformation("Saving audio to {filePath}", filePath);
+                        using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, // 64 KB buffer
+                         FileOptions.Asynchronous | FileOptions.SequentialScan))
+                        {
+                            memoryStream.WriteTo(fileStream);
+                        }
+
+                    }
+                    _logger.LogInformation("Streaming audio for video ID {videoId}", videoId);
+                    return new FileStreamResult(memoryStream, "audio/mp4")
+                    {
+                        EnableRangeProcessing = true,
+                        FileDownloadName = $"{videoId}.mp4"
+                    };
+                }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error occurred while streaming audio.");
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -163,6 +202,7 @@ namespace YTBackgroundBackend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error occurred while retrieving video details.");
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -190,6 +230,7 @@ namespace YTBackgroundBackend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error occurred while retrieving saved files.");
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -197,36 +238,98 @@ namespace YTBackgroundBackend.Controllers
         [HttpGet("playFile")]
         public IActionResult PlayFile(string fileName)
         {
-            if (string.IsNullOrWhiteSpace(fileName))
-                return BadRequest("File name cannot be empty.");
+            try
+            {
+                return ServeFile(fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while playing file.");
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
 
+        }
+
+        private IActionResult ServeFile(string fileName)
+        {
+            // Get the username of the current user
             var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Get the directory for the user
             var userDirectory = Path.Combine(_environment.ContentRootPath, "audio", username);
             var filePath = Path.Combine(userDirectory, fileName);
 
             if (!System.IO.File.Exists(filePath))
-                return NotFound($"File '{fileName}' not found.");
+            {
+                return NotFound("File not found.");
+            }
+
+            var memoryStream = new MemoryStream();
+            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, // 64 KB buffer
+                 FileOptions.Asynchronous | FileOptions.SequentialScan))
+            {
+                fileStream.CopyTo(memoryStream);
+            }
+            memoryStream.Position = 0;
 
             var provider = new FileExtensionContentTypeProvider();
-            if (!provider.TryGetContentType(filePath, out var contentType))
+            if (!provider.TryGetContentType(fileName, out string contentType))
+            {
                 contentType = "application/octet-stream";
+            }
 
-            if (Path.GetExtension(filePath).Equals(".m4a", StringComparison.OrdinalIgnoreCase))
-                contentType = "audio/mp4";
-
-            var fileStream = new FileStream(filePath, new FileStreamOptions
+            return new FileStreamResult(memoryStream, contentType)
             {
-                Mode = FileMode.Open,
-                Access = FileAccess.Read,
-                Share = FileShare.ReadWrite,
-                BufferSize = 64 * 1024, // 64 KB buffer
-                Options = FileOptions.Asynchronous | FileOptions.SequentialScan
-            });
-
-            return new FileStreamResult(fileStream, contentType)
-            {
-                EnableRangeProcessing = true
+                EnableRangeProcessing = true,
+                FileDownloadName = fileName
             };
+        }
+
+        private string ResolveYoutubeDlPath()
+        {
+            var configuredPath = _configuration["YoutubeDL:BinaryPath"];
+            var defaultPath = OperatingSystem.IsWindows() ? "yt-dlp.exe" : "yt-dlp_linux";
+            var fallbackPath = string.IsNullOrWhiteSpace(configuredPath) ? defaultPath : configuredPath;
+
+            var candidates = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            void AddCandidate(string? candidate)
+            {
+                if (string.IsNullOrWhiteSpace(candidate))
+                {
+                    return;
+                }
+
+                if (seen.Add(candidate))
+                {
+                    candidates.Add(candidate);
+                }
+            }
+
+            AddCandidate(fallbackPath);
+            AddCandidate(defaultPath);
+
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                var candidate = candidates[i];
+                if (!Path.IsPathRooted(candidate))
+                {
+                    AddCandidate(Path.Combine(_environment.ContentRootPath, candidate));
+                    AddCandidate(Path.Combine(AppContext.BaseDirectory, candidate));
+                }
+            }
+
+            foreach (var candidate in candidates)
+            {
+                if (System.IO.File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            _logger.LogWarning("yt-dlp binary not found at configured locations. Falling back to {FallbackPath}", fallbackPath);
+            return fallbackPath;
         }
     }
 }

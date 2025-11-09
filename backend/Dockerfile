@@ -14,6 +14,8 @@ RUN dotnet publish -c Release -o out
 # Use the official .NET runtime image to run the app
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 
+ENV YoutubeDL__BinaryPath=yt-dlp_linux
+
 WORKDIR /app
 COPY --from=build /app/out .
 

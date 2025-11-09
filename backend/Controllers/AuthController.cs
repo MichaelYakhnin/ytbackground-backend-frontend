@@ -19,8 +19,8 @@ namespace YTBackgroundBackend.Controllers
             _config = config;
 
             // Connection string and database name
-            var connectionString = _config["MongoDB:ConnectionString"];
-            var databaseName = _config["MongoDB:DatabaseName"];
+            var connectionString = _config["MongoDB:ConnectionString"] ?? "mongodb://localhost:27017";
+            var databaseName = _config["MongoDB:DatabaseName"] ?? "ytdl_new";
 
             // Create a MongoClient and access the database
             var client = new MongoClient(connectionString);

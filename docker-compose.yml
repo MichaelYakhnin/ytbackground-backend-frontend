@@ -15,7 +15,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    restart: always    
+    #restart: always    
+    user: root
     ports:
       - "5054:8080"
     environment:
@@ -30,13 +31,15 @@ services:
             driver: "json-file"        
         container_name: mongo-db
         restart: always
+        user: root
         ports:
             - "27017:27017"
         volumes:
-            - ./db/:/data/db
+            - db:/data/db
             
 volumes:
-  audio-data:  
+  audio-data:
+  db:
 networks:
   ytdl_default:
     driver: bridge       

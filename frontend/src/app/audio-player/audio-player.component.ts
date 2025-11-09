@@ -142,7 +142,7 @@ export class AudioPlayerComponent implements OnInit, OnDestroy {
 
   loadFromServer(isSave: boolean = false): void {
       const token = localStorage.getItem('token');
-      const url = `/api/youtube//stream?videoId=${encodeURIComponent(this.videoId)}&title=${this.title}&saveToFile=${isSave}&access_token=${token}`;
+      const url = `/api/youtube/stream?videoId=${encodeURIComponent(this.videoId)}&title=${this.title}&saveToFile=${isSave}&access_token=${token}`;
       this.audioUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 

@@ -96,3 +96,6 @@ ehthumbs.db
 Thumbs.db
 audio-data/
 db/
+backend/audio/
+backend/.vs/
+backend/.vs/YTBackgroundBackend/v17/DocumentLayout.json
